@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -265,7 +264,7 @@ func run(args []string) error {
 			data, err := readInput(args[2:])
 			if err != nil {
 				return err
-		}
+			}
 			output, err := FormatJSON(data)
 			if err != nil {
 				return err
@@ -293,11 +292,11 @@ func run(args []string) error {
 			data, err := readInput(args[2:])
 			if err != nil {
 				return err
-		}
+			}
 			output, err := YAMLToJSON(data)
 			if err != nil {
 				return err
-		}
+			}
 			return writeOutput(output)
 		default:
 			return fmt.Errorf("unknown yaml command %q", args[1])
@@ -345,13 +344,32 @@ func run(args []string) error {
 }
 
 func runPortCheck(args []string) error {
-	fs := flag.NewFlagSet("check", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	timeoutSeconds := fs.Float64("timeout", 3, "connection timeout in seconds")
-	if err := fs.Parse(args); err != nil {
-		return err
+	timeoutSeconds := 3.0
+	remaining := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--timeout" || arg == "-timeout":
+			if i+1 >= len(args) {
+				return errors.New("timeout requires a value")
+			}
+			i++
+			value, err := strconv.ParseFloat(args[i], 64)
+			if err != nil || value <= 0 {
+				return errors.New("timeout must be a positive number")
+			}
+			timeoutSeconds = value
+		case strings.HasPrefix(arg, "--timeout=") || strings.HasPrefix(arg, "-timeout="):
+			text := arg[strings.IndexByte(arg, '=')+1:]
+			value, err := strconv.ParseFloat(text, 64)
+			if err != nil || value <= 0 {
+				return errors.New("timeout must be a positive number")
+			}
+			timeoutSeconds = value
+		default:
+			remaining = append(remaining, arg)
+		}
 	}
-	remaining := fs.Args()
 	if len(remaining) != 2 {
 		return errors.New("usage: devkit port check <host> <port>")
 	}
@@ -359,7 +377,7 @@ func runPortCheck(args []string) error {
 	if err != nil || port < 1 || port > 65535 {
 		return errors.New("port must be an integer between 1 and 65535")
 	}
-	timeout := time.Duration(*timeoutSeconds * float64(time.Second))
+	timeout := time.Duration(timeoutSeconds * float64(time.Second))
 	if err := CheckTCPPort(remaining[0], port, timeout); err != nil {
 		fmt.Fprintf(os.Stdout, "closed: %s\n", err)
 		return err
