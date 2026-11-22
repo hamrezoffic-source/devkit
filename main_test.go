@@ -177,3 +177,27 @@ func TestCLIEndToEnd(t *testing.T) {
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
+
+func TestJSONToYAMLKeepsNumberTypes(t *testing.T) {
+	input := []byte(`{"int":1,"neg":-7,"float":1.5,"big":12345678901234567890,"nested":[3,{"x":4}],"str":"5"}`)
+	yamlOutput, err := JSONToYAML(input)
+	if err != nil {
+		t.Fatalf("JSONToYAML() error = %v", err)
+	}
+	for _, quoted := range []string{`"1"`, `"-7"`, `"1.5"`, `"12345678901234567890"`} {
+		if bytes.Contains(yamlOutput, []byte(quoted)) {
+			t.Fatalf("JSONToYAML() quoted a number %s:\n%s", quoted, yamlOutput)
+		}
+	}
+	if !bytes.Contains(yamlOutput, []byte(`str: "5"`)) {
+		t.Fatalf("JSONToYAML() lost the string type of \"5\":\n%s", yamlOutput)
+	}
+	back, err := YAMLToJSON(yamlOutput)
+	if err != nil {
+		t.Fatalf("YAMLToJSON() error = %v", err)
+	}
+	want, _ := FormatJSON(input)
+	if string(back) != string(want) {
+		t.Fatalf("round trip changed data:\n got %s\nwant %s", back, want)
+	}
+}
