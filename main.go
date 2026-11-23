@@ -15,6 +15,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// version is set at build time with -ldflags "-X main.version=v1.2.3".
+var version = "dev"
+
 const usage = `devkit - a fast, portable developer toolkit
 
 Usage:
@@ -28,6 +31,10 @@ Aliases:
   devkit json-to-yaml [file|-]
   devkit yaml-to-json [file|-]
   devkit check-port <host> <port>
+
+Flags:
+  -h, --help       show this help
+  -v, --version    print the devkit version
 
 Use "-" or omit the file argument to read from standard input.
 `
@@ -278,6 +285,9 @@ func run(args []string) error {
 	}
 
 	switch args[0] {
+	case "-v", "--version", "version":
+		fmt.Printf("devkit %s\n", version)
+		return nil
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return nil
