@@ -21,6 +21,7 @@ var version = "dev"
 const usage = `devkit - a fast, portable developer toolkit
 
 Usage:
+  devkit json check [file|-]
   devkit json format [file|-]
   devkit json to-yaml [file|-]
   devkit yaml to-json [file|-]
@@ -366,9 +367,15 @@ func run(args []string) error {
 		return nil
 	case "json":
 		if len(args) < 2 {
-			return errors.New("json command requires format or to-yaml")
+			return errors.New("json command requires check, format, or to-yaml")
 		}
 		switch args[1] {
+		case "check":
+			data, err := readInput(args[2:])
+			if err != nil {
+				return err
+			}
+			return ValidateJSON(data)
 		case "format":
 			data, err := readInput(args[2:])
 			if err != nil {
