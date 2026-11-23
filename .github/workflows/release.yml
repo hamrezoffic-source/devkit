@@ -50,7 +50,7 @@ jobs:
           if [ "${GOOS}" = "windows" ]; then ext=".exe"; fi
           mkdir -p dist
           go build -trimpath -ldflags="-s -w -X main.version=${GITHUB_REF_NAME}" -o "dist/devkit-${GOOS}-${GOARCH}${ext}" .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: devkit-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*
