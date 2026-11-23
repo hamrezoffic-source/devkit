@@ -75,6 +75,79 @@ func FormatJSON(data []byte) ([]byte, error) {
 	return append(output, '\n'), nil
 }
 
+// ValidateJSON checks that data contains exactly one valid JSON value and
+// rejects duplicate keys in every object. The standard decoder otherwise keeps
+// the last value for a duplicate key, which can hide configuration mistakes.
+func ValidateJSON(data []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if err := validateJSONValue(decoder); err != nil {
+		return fmt.Errorf("invalid JSON: %w", err)
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		if err == nil {
+			return errors.New("invalid JSON: multiple JSON values")
+		}
+		return fmt.Errorf("invalid JSON: %w", err)
+	}
+	return nil
+}
+
+func validateJSONValue(decoder *json.Decoder) error {
+	token, err := decoder.Token()
+	if err != nil {
+		return err
+	}
+	delimiter, ok := token.(json.Delim)
+	if !ok {
+		return nil
+	}
+
+	switch delimiter {
+	case '{':
+		seen := make(map[string]struct{})
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return err
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return errors.New("expected an object key")
+			}
+			if _, exists := seen[key]; exists {
+				return fmt.Errorf("duplicate object key %q", key)
+			}
+			seen[key] = struct{}{}
+			if err := validateJSONValue(decoder); err != nil {
+				return err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if end != json.Delim('}') {
+			return errors.New("expected end of object")
+		}
+	case '[':
+		for decoder.More() {
+			if err := validateJSONValue(decoder); err != nil {
+				return err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if end != json.Delim(']') {
+			return errors.New("expected end of array")
+		}
+	default:
+		return fmt.Errorf("unexpected delimiter %q", delimiter)
+	}
+	return nil
+}
+
 func JSONToYAML(data []byte) ([]byte, error) {
 	decoder, _ := jsonDecoder(data)
 	var value any
