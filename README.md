@@ -18,7 +18,7 @@ Format JSON · Convert JSON ⇄ YAML · Check TCP ports
 ## Why devkit?
 
 - **One binary, no runtime.** Written in Go, statically built for Linux, macOS and Windows (amd64 and arm64).
-- **Correct by default.** Large integers stay exact, numbers keep their type across JSON ⇄ YAML, duplicate JSON and YAML keys are rejected by validation/conversion.
+- **Correct by default.** Large integers stay exact, numbers keep their type across JSON ⇄ YAML, `json check` detects duplicate JSON keys, and YAML conversion rejects duplicate keys.
 - **Pipe-friendly.** Every command reads a file or standard input and writes clean output to standard output.
 - **Script-friendly exit codes.** `0` on success, `1` on any error.
 
