@@ -18,7 +18,7 @@ Format JSON · Convert JSON ⇄ YAML · Check TCP ports
 ## Why devkit?
 
 - **One binary, no runtime.** Written in Go, statically built for Linux, macOS and Windows (amd64 and arm64).
-- **Correct by default.** Large integers stay exact, numbers keep their type across JSON ⇄ YAML, duplicate YAML keys are rejected.
+- **Correct by default.** Large integers stay exact, numbers keep their type across JSON ⇄ YAML, duplicate JSON and YAML keys are rejected by validation/conversion.
 - **Pipe-friendly.** Every command reads a file or standard input and writes clean output to standard output.
 - **Script-friendly exit codes.** `0` on success, `1` on any error.
 
@@ -49,6 +49,9 @@ devkit --version
 ## Quick start
 
 ```sh
+# Validate a JSON config (silent on success; nonzero exit on invalid input)
+devkit json check config.json
+
 # Pretty-print JSON
 echo '{"name":"devkit","tags":["go","cli"]}' | devkit json format
 
@@ -66,6 +69,7 @@ devkit port check example.com 443
 
 | Command | Description | Short alias |
 | --- | --- | --- |
+| `devkit json check [file\|-]` | Validate JSON and reject duplicate object keys | — |
 | `devkit json format [file\|-]` | Pretty-print JSON with 2-space indentation | `devkit format` |
 | `devkit json to-yaml [file\|-]` | Convert JSON to YAML | `devkit json-to-yaml` |
 | `devkit yaml to-json [file\|-]` | Convert YAML to formatted JSON | `devkit yaml-to-json` |
@@ -78,11 +82,16 @@ Omit the file argument, or pass `-`, to read from standard input.
 ### JSON
 
 ```sh
+# Check a file or a stream; valid input produces no output and exits 0
+devkit json check config.json
+cat config.json | devkit json check -
+
+# Format a file or a stream
 devkit json format input.json
 cat input.json | devkit json format -
 ```
 
-Large integers such as `9007199254740993` are preserved without floating-point rounding. Input containing more than one JSON value is rejected.
+`json check` rejects malformed input, multiple top-level values, and duplicate object keys (including nested objects). It produces no output on success and exits nonzero on failure, so it works in CI and shell scripts. Large integers such as `9007199254740993` are preserved without floating-point rounding by the formatter and converter. Input containing more than one JSON value is rejected.
 
 ### JSON ⇄ YAML
 
@@ -112,7 +121,7 @@ The default timeout is 3 seconds.
 
 ## Roadmap
 
-- [x] JSON formatting and JSON ⇄ YAML conversion
+- [x] JSON formatting, strict JSON validation, and JSON ⇄ YAML conversion
 - [x] TCP port check
 - [x] `--version` flag and cross-platform releases
 - [ ] Split into `cmd/` and `internal/` packages
