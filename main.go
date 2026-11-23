@@ -81,11 +81,37 @@ func JSONToYAML(data []byte) ([]byte, error) {
 		}
 		return nil, fmt.Errorf("invalid JSON: %w", err)
 	}
-	output, err := yaml.Marshal(value)
+	output, err := yaml.Marshal(numbersToYAMLNodes(value))
 	if err != nil {
 		return nil, fmt.Errorf("convert JSON to YAML: %w", err)
 	}
 	return output, nil
+}
+
+// numbersToYAMLNodes replaces json.Number values with YAML scalar nodes tagged
+// as !!int or !!float. Without this, yaml.v3 sees json.Number as a string and
+// emits quoted values ("1"), which silently changes the data type.
+func numbersToYAMLNodes(value any) any {
+	switch v := value.(type) {
+	case json.Number:
+		tag := "!!int"
+		if strings.ContainsAny(string(v), ".eE") {
+			tag = "!!float"
+		}
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: tag, Value: string(v)}
+	case map[string]any:
+		for key, item := range v {
+			v[key] = numbersToYAMLNodes(item)
+		}
+		return v
+	case []any:
+		for i, item := range v {
+			v[i] = numbersToYAMLNodes(item)
+		}
+		return v
+	default:
+		return value
+	}
 }
 
 func yamlNodeToJSONCompatible(node *yaml.Node) (any, error) {
@@ -257,7 +283,7 @@ func run(args []string) error {
 		return nil
 	case "json":
 		if len(args) < 2 {
-			return errors.New("json command requires format, to-yaml, or tojson")
+			return errors.New("json command requires format or to-yaml")
 		}
 		switch args[1] {
 		case "format":
@@ -285,7 +311,7 @@ func run(args []string) error {
 		}
 	case "yaml":
 		if len(args) < 2 {
-			return errors.New("yaml command requires to-json or tojson")
+			return errors.New("yaml command requires to-json")
 		}
 		switch args[1] {
 		case "to-json", "tojson", "2json":
@@ -379,7 +405,7 @@ func runPortCheck(args []string) error {
 	}
 	timeout := time.Duration(timeoutSeconds * float64(time.Second))
 	if err := CheckTCPPort(remaining[0], port, timeout); err != nil {
-		fmt.Fprintf(os.Stdout, "closed: %s\n", err)
+		fmt.Fprintln(os.Stdout, "closed")
 		return err
 	}
 	fmt.Fprintln(os.Stdout, "open")
