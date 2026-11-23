@@ -201,3 +201,23 @@ func TestJSONToYAMLKeepsNumberTypes(t *testing.T) {
 		t.Fatalf("round trip changed data:\n got %s\nwant %s", back, want)
 	}
 }
+
+func TestVersionFlag(t *testing.T) {
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	runErr := run([]string{"--version"})
+	w.Close()
+	os.Stdout = old
+	if runErr != nil {
+		t.Fatalf("run(--version) error = %v", runErr)
+	}
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	if !strings.HasPrefix(buf.String(), "devkit ") {
+		t.Fatalf("run(--version) printed %q", buf.String())
+	}
+}
